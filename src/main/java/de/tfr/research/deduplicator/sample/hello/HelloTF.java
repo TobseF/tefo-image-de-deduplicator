@@ -1,7 +1,10 @@
+package de.tfr.research.deduplicator.sample.hello;
+
 import org.tensorflow.Graph;
 import org.tensorflow.Session;
 import org.tensorflow.Tensor;
 import org.tensorflow.TensorFlow;
+
 
 public class HelloTF {
     public static void main(String[] args) throws Exception {
