@@ -1,4 +1,4 @@
-package de.tfr.research.deduplicator.sample.label;
+package de.tfr.research.deduplicator.sample.tensorflow;
 
 import org.tensorflow.DataType;
 import org.tensorflow.Graph;
@@ -11,30 +11,30 @@ import org.tensorflow.types.UInt8;
  * the OpDefs linked into libtensorflow_jni.so. That would match what is done in other languages
  * like Python, C++ and Go.
  */
-class GraphBuilder {
+public class GraphBuilder {
     private Graph g;
 
-    GraphBuilder(Graph g) {
+    public GraphBuilder(Graph g) {
         this.g = g;
     }
 
-    Output<Float> div(Output<Float> x, Output<Float> y) {
+    public Output<Float> div(Output<Float> x, Output<Float> y) {
         return binaryOp("Div", x, y);
     }
 
-    <T> Output<T> sub(Output<T> x, Output<T> y) {
+    public <T> Output<T> sub(Output<T> x, Output<T> y) {
         return binaryOp("Sub", x, y);
     }
 
-    <T> Output<Float> resizeBilinear(Output<T> images, Output<Integer> size) {
+    public <T> Output<Float> resizeBilinear(Output<T> images, Output<Integer> size) {
         return binaryOp3("ResizeBilinear", images, size);
     }
 
-    <T> Output<T> expandDims(Output<T> input, Output<Integer> dim) {
+    public <T> Output<T> expandDims(Output<T> input, Output<Integer> dim) {
         return binaryOp3("ExpandDims", input, dim);
     }
 
-    <T, U> Output<U> cast(Output<T> value, Class<U> type) {
+    public <T, U> Output<U> cast(Output<T> value, Class<U> type) {
         DataType dtype = DataType.fromClass(type);
         return g.opBuilder("Cast", "Cast")
                 .addInput(value)
@@ -43,7 +43,7 @@ class GraphBuilder {
                 .output(0);
     }
 
-    Output<UInt8> decodeJpeg(Output<String> contents, long channels) {
+    public Output<UInt8> decodeJpeg(Output<String> contents, long channels) {
         return g.opBuilder("DecodeJpeg", "DecodeJpeg")
                 .addInput(contents)
                 .setAttr("channels", channels)
@@ -61,19 +61,19 @@ class GraphBuilder {
         }
     }
 
-    Output<String> constant(String name, byte[] value) {
+    public Output<String> constant(String name, byte[] value) {
         return this.constant(name, value, String.class);
     }
 
-    Output<Integer> constant(String name, int value) {
+    public Output<Integer> constant(String name, int value) {
         return this.constant(name, value, Integer.class);
     }
 
-    Output<Integer> constant(String name, int[] value) {
+    public Output<Integer> constant(String name, int[] value) {
         return this.constant(name, value, Integer.class);
     }
 
-    Output<Float> constant(String name, float value) {
+    public Output<Float> constant(String name, float value) {
         return this.constant(name, value, Float.class);
     }
 

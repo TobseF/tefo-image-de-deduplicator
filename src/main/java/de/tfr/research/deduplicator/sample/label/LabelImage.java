@@ -15,7 +15,9 @@ limitations under the License.
 
 package de.tfr.research.deduplicator.sample.label;
 
-import org.tensorflow.*;
+import de.tfr.research.deduplicator.sample.tensorflow.TensorFlowGraph;
+import de.tfr.research.deduplicator.sample.tensorflow.TensorImage;
+import org.tensorflow.TensorFlow;
 
 import java.io.IOException;
 import java.io.PrintStream;
@@ -47,80 +49,28 @@ public class LabelImage {
     }
 
     public static void main(String[] args) {
-        if (args.length != 2) {
+        if (args.length != 3) {
             printUsage(System.err);
             System.exit(1);
         }
-        String modelDir = args[0];
-        String imageFile = args[1];
+        String tensorFile = args[0];
+        String labelFile = args[1];
+        String imageFile = args[2];
 
-        byte[] graphDef = readAllBytesOrExit(Paths.get(modelDir, "tensorflow_inception_graph.pb"));
-        List<String> labels =
-                readAllLinesOrExit(Paths.get(modelDir, "imagenet_comp_graph_label_strings.txt"));
-        byte[] imageBytes = readAllBytesOrExit(Paths.get(imageFile));
+        List<String> labels = readAllLinesOrExit(Paths.get(labelFile));
 
-        try (Tensor<Float> image = constructAndExecuteGraphToNormalizeImage(imageBytes)) {
-            float[] labelProbabilities = executeInceptionGraph(graphDef, image);
-            int bestLabelIdx = maxIndex(labelProbabilities);
-            System.out.println(
-                    String.format("BEST MATCH: %s (%.2f%% likely)",
-                            labels.get(bestLabelIdx),
-                            labelProbabilities[bestLabelIdx] * 100f));
-        }
+        TensorImage image = new TensorImage(Paths.get(imageFile));
+        TensorFlowGraph graph = new TensorFlowGraph(Paths.get(tensorFile));
+        float[] labelProbabilities = graph.executeInceptionGraph(image);
+        System.out.println(Arrays.toString(labelProbabilities));
+        int bestLabelIdx = maxIndex(labelProbabilities);
+        System.out.println(
+                String.format("BEST MATCH: %s (%.2f%% likely)",
+                        labels.get(bestLabelIdx),
+                        labelProbabilities[bestLabelIdx] * 100f));
+
     }
 
-    private static Tensor<Float> constructAndExecuteGraphToNormalizeImage(byte[] imageBytes) {
-        try (Graph g = new Graph()) {
-            GraphBuilder b = new GraphBuilder(g);
-            // Some constants specific to the pre-trained model at:
-            // https://storage.googleapis.com/download.tensorflow.org/models/inception5h.zip
-            //
-            // - The model was trained with images scaled to 224x224 pixels.
-            // - The colors, represented as R, G, B in 1-byte each were converted to
-            //   float using (value - Mean)/Scale.
-            final int H = 224;
-            final int W = 224;
-            final float mean = 117f;
-            final float scale = 1f;
-
-            // Since the graph is being constructed once per execution here, we can use a constant for the
-            // input image. If the graph were to be re-used for multiple input images, a placeholder would
-            // have been more appropriate.
-            final Output<String> input = b.constant("input", imageBytes);
-            final Output<Float> output =
-                    b.div(
-                            b.sub(
-                                    b.resizeBilinear(
-                                            b.expandDims(
-                                                    b.cast(b.decodeJpeg(input, 3), Float.class),
-                                                    b.constant("make_batch", 0)),
-                                            b.constant("size", new int[]{H, W})),
-                                    b.constant("mean", mean)),
-                            b.constant("scale", scale));
-            try (Session s = new Session(g)) {
-                return s.runner().fetch(output.op().name()).run().get(0).expect(Float.class);
-            }
-        }
-    }
-
-    private static float[] executeInceptionGraph(byte[] graphDef, Tensor<Float> image) {
-        try (Graph g = new Graph()) {
-            g.importGraphDef(graphDef);
-            try (Session s = new Session(g);
-                 Tensor<Float> result =
-                         s.runner().feed("input", image).fetch("output").run().get(0).expect(Float.class)) {
-                final long[] rshape = result.shape();
-                if (result.numDimensions() != 2 || rshape[0] != 1) {
-                    throw new RuntimeException(
-                            String.format(
-                                    "Expected model to produce a [1 N] shaped tensor where N is the number of labels, instead it produced one with shape %s",
-                                    Arrays.toString(rshape)));
-                }
-                int nlabels = (int) rshape[1];
-                return result.copyTo(new float[1][nlabels])[0];
-            }
-        }
-    }
 
     private static int maxIndex(float[] probabilities) {
         int best = 0;
@@ -132,15 +82,6 @@ public class LabelImage {
         return best;
     }
 
-    private static byte[] readAllBytesOrExit(Path path) {
-        try {
-            return Files.readAllBytes(path);
-        } catch (IOException e) {
-            System.err.println("Failed to read [" + path + "]: " + e.getMessage());
-            System.exit(1);
-        }
-        return null;
-    }
 
     private static List<String> readAllLinesOrExit(Path path) {
         try {
