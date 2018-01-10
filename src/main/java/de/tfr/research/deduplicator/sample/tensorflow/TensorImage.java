@@ -16,9 +16,10 @@ public class TensorImage {
     }
 
     public Tensor<Float> getNormalizedImage() {
-        byte[] imageBytes = readAllBytesOrExit(imageFile);
-        Tensor<Float> normalizeImage = ImageNormalizer.constructAndExecuteGraphToNormalizeImage(imageBytes);
-        return normalizeImage;
+        return ImageNormalizer.constructAndExecuteGraphToNormalizeImage(readAllBytesOrExit(imageFile));
     }
 
+    public Path getImageFile() {
+        return imageFile;
+    }
 }
